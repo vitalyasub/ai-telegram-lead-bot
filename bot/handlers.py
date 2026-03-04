@@ -1,8 +1,15 @@
+import asyncio
+import traceback
+
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+
+from sheets import append_lead_row
+
+from config import ADMIN_ID
 
 router = Router()
 
@@ -97,4 +104,31 @@ async def process_comment(message: Message, state: FSMContext):
         f"📝 Коментар: {comment}\n\n"
         "Ми зв’яжемося з вами найближчим часом.",
         reply_markup=main_kb
+    )
+
+    username = message.from_user.username
+
+    try:
+        await asyncio.to_thread(
+            append_lead_row,
+            name=name,
+            phone=phone,
+            comment=comment,
+            username=username,
+        )
+    except Exception as e:
+        err = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        # покажемо помилку тобі (адміну), щоб одразу зрозуміти причину
+        await message.bot.send_message(
+            ADMIN_ID,
+            "⚠️ Помилка запису в Google Sheets.\n\n"
+            f"{str(e)}"
+        )   
+
+    await message.bot.send_message(
+        ADMIN_ID,
+        f"📩 Нова заявка!\n\n"
+        f"👤 Ім’я: {name}\n"
+        f"📞 Телефон: {phone}\n"
+        f"📝 Коментар: {comment}"
     )
