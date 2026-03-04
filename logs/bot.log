@@ -14,3 +14,6 @@
 2026-03-04 16:43:56 | INFO | aiogram.event | Update id=62690930 is handled. Duration 4817 ms by bot id=8676672550
 2026-03-04 16:44:07 | INFO | bot.handlers | Admin /stats | admin_id=740595018
 2026-03-04 16:44:12 | INFO | aiogram.event | Update id=62690931 is handled. Duration 4547 ms by bot id=8676672550
+2026-03-04 16:53:21 | ERROR | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-03-04 16:53:21 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8676672550)
+2026-03-04 16:53:33 | INFO | aiogram.dispatcher | Connection established (tryings = 1, bot id = 8676672550)
