@@ -1,0 +1,16 @@
+2026-03-04 16:42:33 | INFO | bot | Запуск бота...
+2026-03-04 16:42:37 | INFO | bot | Google Sheet ініціалізовано (хедер перевірено)
+2026-03-04 16:42:37 | INFO | aiogram.dispatcher | Start polling
+2026-03-04 16:42:37 | INFO | aiogram.dispatcher | Run polling for bot @ai_telegram_lead_bot id=8676672550 - 'ai-telegram-lead-bot'
+2026-03-04 16:43:02 | INFO | bot.handlers | Lead form start | user_id=7032512129 username=bugzi11a
+2026-03-04 16:43:02 | INFO | aiogram.event | Update id=62690925 is handled. Duration 249 ms by bot id=8676672550
+2026-03-04 16:43:12 | INFO | aiogram.event | Update id=62690926 is handled. Duration 98 ms by bot id=8676672550
+2026-03-04 16:43:26 | INFO | aiogram.event | Update id=62690927 is handled. Duration 130 ms by bot id=8676672550
+2026-03-04 16:43:32 | INFO | aiogram.event | Update id=62690928 is handled. Duration 140 ms by bot id=8676672550
+2026-03-04 16:43:34 | INFO | bot.handlers | Lead confirmed | user_id=7032512129 username=bugzi11a name=Наташа phone=+380636334455
+2026-03-04 16:43:39 | INFO | bot.handlers | Sheets write OK | phone=+380636334455
+2026-03-04 16:43:39 | INFO | aiogram.event | Update id=62690929 is handled. Duration 4708 ms by bot id=8676672550
+2026-03-04 16:43:51 | INFO | bot.handlers | Admin last leads | admin_id=740595018
+2026-03-04 16:43:56 | INFO | aiogram.event | Update id=62690930 is handled. Duration 4817 ms by bot id=8676672550
+2026-03-04 16:44:07 | INFO | bot.handlers | Admin /stats | admin_id=740595018
+2026-03-04 16:44:12 | INFO | aiogram.event | Update id=62690931 is handled. Duration 4547 ms by bot id=8676672550
