@@ -49,6 +49,14 @@ admin_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+contact_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="📲 Поділитися контактом", request_contact=True)],
+        [KeyboardButton(text="Скасувати")],
+    ],
+    resize_keyboard=True
+)
+
 confirm_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="✅ Підтвердити")],
@@ -265,19 +273,51 @@ async def process_name(message: Message, state: FSMContext):
 
     await state.update_data(name=name)
     await state.set_state(LeadForm.phone)
-    await message.answer("Вкажіть номер телефону (наприклад: +380XXXXXXXXX):", reply_markup=cancel_kb)
+    await message.answer(
+        "Вкажіть номер телефону.\n\n"
+        "✅ Найкраще: натисніть «📲 Поділитися контактом».\n"
+        "✍️ Або введіть номер вручну (наприклад: +380XXXXXXXXX).",
+        reply_markup=contact_kb
+    )
 
 @router.message(LeadForm.phone)
 async def process_phone(message: Message, state: FSMContext):
-    phone = _normalize_phone(message.text or "")
+    # Якщо користувач поділився контактом
+    if message.contact and message.contact.phone_number:
+        phone = message.contact.phone_number.strip()
+        # Нормалізуємо до формату з "+"
+        if not phone.startswith("+"):
+            phone = "+" + "".join(ch for ch in phone if ch.isdigit())
+        else:
+            phone = "+" + "".join(ch for ch in phone if ch.isdigit())
+
+        await state.update_data(phone=phone)
+        await state.set_state(LeadForm.comment)
+        await message.answer(
+            "Додайте коментар до заявки (або напишіть: Без коментаря):",
+            reply_markup=cancel_kb
+        )
+        return
+
+    # Інакше — ручний ввід
+    phone_raw = message.text or ""
+    phone = _normalize_phone(phone_raw)
+
     digits = [c for c in phone if c.isdigit()]
     if len(digits) < 10:
-        await message.answer("Схоже, номер некоректний. Вкажіть телефон ще раз (мінімум 10 цифр):", reply_markup=cancel_kb)
+        await message.answer(
+            "Схоже, номер некоректний.\n"
+            "Спробуйте ще раз або натисніть «📲 Поділитися контактом».",
+            reply_markup=contact_kb
+        )
         return
 
     await state.update_data(phone=phone)
     await state.set_state(LeadForm.comment)
-    await message.answer("Додайте коментар до заявки (або напишіть: Без коментаря):", reply_markup=cancel_kb)
+    await message.answer(
+        "Додайте коментар до заявки (або напишіть: Без коментаря):",
+        reply_markup=cancel_kb
+    )
 
 @router.message(LeadForm.comment)
 async def process_comment(message: Message, state: FSMContext):
