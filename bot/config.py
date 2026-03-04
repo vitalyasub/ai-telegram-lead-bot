@@ -13,3 +13,6 @@ BOT_NAME = os.getenv("BOT_NAME", "Lead Bot")
 WELCOME_TEXT = os.getenv("WELCOME_TEXT", "Вітаю!")
 BUTTON_TEXT = os.getenv("BUTTON_TEXT", "Залишити заявку")
 SUCCESS_TEXT = os.getenv("SUCCESS_TEXT", "Дякуємо!")
+
+LEADS_ENABLED = os.getenv("LEADS_ENABLED", "1") == "1"
+LEAD_COOLDOWN_MINUTES = int(os.getenv("LEAD_COOLDOWN_MINUTES", "30"))
