@@ -2,12 +2,12 @@ import asyncio
 import traceback
 
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from sheets import append_lead_row
+from sheets import append_lead_row, get_last_leads, find_leads_by_phone
 
 from config import ADMIN_ID
 
@@ -20,6 +20,18 @@ main_kb = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+admin_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="📄 Останні 10 заявок")],
+        [KeyboardButton(text="🔎 Пошук за телефоном")],
+        [KeyboardButton(text="⬅️ Назад")],
+    ],
+    resize_keyboard=True
+)
+
+class AdminStates(StatesGroup):
+    phone_search = State()
 
 # --- Стан машини (FSM) ---
 class LeadForm(StatesGroup):
@@ -35,6 +47,92 @@ async def cmd_start(message: Message, state: FSMContext):
         "Вітаю! 👋\nЯ можу допомогти залишити заявку.\nНатисніть кнопку нижче.",
         reply_markup=main_kb
     )
+
+def _is_admin(message: Message) -> bool:
+    return message.from_user and message.from_user.id == ADMIN_ID
+
+
+@router.message(Command("admin"))
+async def admin_panel(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+    await state.clear()
+    await message.answer("Адмін-панель:", reply_markup=admin_kb)
+
+
+@router.message(lambda m: m.text == "⬅️ Назад")
+async def back_to_main(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Головне меню:", reply_markup=main_kb)
+
+
+@router.message(lambda m: m.text == "📄 Останні 10 заявок")
+async def admin_last_leads(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+
+    try:
+        rows = await asyncio.to_thread(get_last_leads, 10)
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося отримати заявки: {e}")
+        return
+
+    if not rows:
+        await message.answer("Поки що заявок немає.")
+        return
+
+    text_lines = ["📄 Останні заявки:"]
+    for r in rows:
+        dt = r[0] if len(r) > 0 else "—"
+        name = r[1] if len(r) > 1 else "—"
+        phone = r[2] if len(r) > 2 else "—"
+        comment = r[3] if len(r) > 3 else "—"
+        text_lines.append(f"\n🕒 {dt}\n👤 {name}\n📞 {phone}\n📝 {comment}")
+
+    # Telegram має ліміт на довжину, але на 10 заявок зазвичай ок
+    await message.answer("\n".join(text_lines))
+
+
+@router.message(lambda m: m.text == "🔎 Пошук за телефоном")
+async def admin_search_phone_start(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+
+    await state.set_state(AdminStates.phone_search)
+    await message.answer("Введіть частину номера телефону для пошуку (наприклад: 067 або +38067):")
+
+
+@router.message(AdminStates.phone_search)
+async def admin_search_phone_process(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+
+    q = (message.text or "").strip()
+    if len(q) < 3:
+        await message.answer("Запит закороткий. Введіть мінімум 3 символи номера:")
+        return
+
+    try:
+        rows = await asyncio.to_thread(find_leads_by_phone, q, 5)
+    except Exception as e:
+        await message.answer(f"⚠️ Помилка пошуку: {e}")
+        return
+
+    if not rows:
+        await message.answer("Нічого не знайдено.")
+        await state.clear()
+        return
+
+    text_lines = [f"🔎 Знайдено (до 5):"]
+    for r in rows:
+        dt = r[0] if len(r) > 0 else "—"
+        name = r[1] if len(r) > 1 else "—"
+        phone = r[2] if len(r) > 2 else "—"
+        comment = r[3] if len(r) > 3 else "—"
+        text_lines.append(f"\n🕒 {dt}\n👤 {name}\n📞 {phone}\n📝 {comment}")
+
+    await message.answer("\n".join(text_lines))
+    await state.clear()
 
 
 @router.message(lambda m: m.text == "Залишити заявку")
