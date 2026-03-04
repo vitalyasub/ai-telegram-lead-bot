@@ -7,16 +7,16 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKey
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from sheets import append_lead_row, get_last_leads, find_leads_by_phone
+from sheets import append_lead_row, get_last_leads, find_leads_by_phone, get_leads_stats
 
-from config import ADMIN_ID
+from config import ADMIN_ID, BUTTON_TEXT, WELCOME_TEXT, SUCCESS_TEXT
 
 router = Router()
 
 # --- Клавіатура головного меню ---
 main_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Залишити заявку")],
+        [KeyboardButton(text=BUTTON_TEXT)],
     ],
     resize_keyboard=True
 )
@@ -44,7 +44,7 @@ class LeadForm(StatesGroup):
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        "Вітаю! 👋\nЯ можу допомогти залишити заявку.\nНатисніть кнопку нижче.",
+        WELCOME_TEXT,
         reply_markup=main_kb
     )
 
@@ -134,8 +134,26 @@ async def admin_search_phone_process(message: Message, state: FSMContext):
     await message.answer("\n".join(text_lines))
     await state.clear()
 
+@router.message(Command("stats"))
+async def admin_stats(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
 
-@router.message(lambda m: m.text == "Залишити заявку")
+    try:
+        stats = await asyncio.to_thread(get_leads_stats)
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося отримати статистику: {e}")
+        return
+
+    await message.answer(
+        "📊 Статистика заявок:\n\n"
+        f"• Всього: {stats['total']}\n"
+        f"• Сьогодні: {stats['today']}\n"
+        f"• Останні 7 днів: {stats['last_7_days']}"
+    )
+
+
+@router.message(lambda m: m.text == BUTTON_TEXT)
 async def start_lead_form(message: Message, state: FSMContext):
     await state.set_state(LeadForm.name)
     await message.answer(
@@ -223,10 +241,10 @@ async def process_comment(message: Message, state: FSMContext):
             f"{str(e)}"
         )   
 
-    await message.bot.send_message(
-        ADMIN_ID,
-        f"📩 Нова заявка!\n\n"
+    await message.answer(
+        f"{SUCCESS_TEXT}\n\n"
         f"👤 Ім’я: {name}\n"
         f"📞 Телефон: {phone}\n"
-        f"📝 Коментар: {comment}"
+        f"📝 Коментар: {comment}",
+        reply_markup=main_kb
     )

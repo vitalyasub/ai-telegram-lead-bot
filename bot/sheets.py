@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -78,3 +78,51 @@ def find_leads_by_phone(phone_query: str, limit: int = 5) -> list[list[str]]:
             if len(found) >= limit:
                 break
     return found
+
+def get_leads_stats() -> dict[str, int]:
+    """
+    Повертає статистику по заявках:
+    - total: всього
+    - today: сьогодні
+    - last_7_days: за останні 7 днів
+    Очікує формат дати/часу в колонці 1: "%Y-%m-%d %H:%M:%S"
+    """
+    client = _get_client()
+    sh = client.open(GSHEET_NAME)
+    ws = sh.sheet1
+
+    values = ws.get_all_values()
+    if not values:
+        return {"total": 0, "today": 0, "last_7_days": 0}
+
+    rows = values[1:]  # без хедера
+    rows = [r for r in rows if any(cell.strip() for cell in r)]
+
+    total = len(rows)
+
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    week_ago = now - timedelta(days=7)
+
+    today_count = 0
+    last_7_days_count = 0
+
+    for r in rows:
+        dt_str = r[0] if len(r) > 0 else ""
+        if not dt_str:
+            continue
+
+        # today
+        if dt_str.startswith(today_str):
+            today_count += 1
+
+        # last 7 days
+        try:
+            dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            if dt >= week_ago:
+                last_7_days_count += 1
+        except ValueError:
+            # Якщо дата в іншому форматі — просто пропускаємо
+            pass
+
+    return {"total": total, "today": today_count, "last_7_days": last_7_days_count}
