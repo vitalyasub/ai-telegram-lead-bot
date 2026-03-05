@@ -1,11 +1,17 @@
 import asyncio
 import logging
+import csv
 
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+from datetime import datetime
+from pathlib import Path
+
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 
 from sheets import (
     append_lead_row,
@@ -13,6 +19,7 @@ from sheets import (
     find_leads_by_phone,
     get_leads_stats,
     ping_sheets,
+    get_all_leads_with_header,
 )
 
 from config import (
@@ -190,6 +197,133 @@ async def admin_health(message: Message, state: FSMContext):
         f"  {sheets_msg}\n",
         reply_markup=admin_kb
     )
+
+@router.message(Command("export_csv"))
+async def admin_export_csv(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+
+    logger.info("Адмін команда /export_csv | admin_id=%s", message.from_user.id if message.from_user else None)
+
+    # 1) Забираємо дані з Sheets
+    try:
+        rows = await asyncio.to_thread(get_all_leads_with_header)
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося зчитати дані з Google Sheets: {e}", reply_markup=admin_kb)
+        return
+
+    if not rows or len(rows) <= 1:
+        await message.answer("Немає даних для експорту (таблиця порожня).", reply_markup=admin_kb)
+        return
+
+    # 2) Генеруємо CSV у файл
+    exports_dir = Path("exports")
+    exports_dir.mkdir(exist_ok=True)
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = exports_dir / f"leads_export_{ts}.csv"
+
+    # utf-8-sig -> Excel нормально відкриває кирилицю
+    try:
+        with file_path.open("w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerows(rows)
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося створити CSV: {e}", reply_markup=admin_kb)
+        return
+
+    # 3) Надсилаємо файл адміну
+    try:
+        doc = FSInputFile(str(file_path))
+        await message.answer_document(
+            document=doc,
+            caption=f"📦 Експорт заявок (CSV): {file_path.name}",
+            reply_markup=admin_kb
+        )
+        logger.info("CSV експорт надіслано | file=%s rows=%s", file_path.name, len(rows))
+    except Exception:
+        logger.exception("Помилка надсилання CSV файлу")
+        await message.answer("⚠️ Не вдалося надіслати файл. Див. лог.", reply_markup=admin_kb)
+    finally:
+        # 4) Прибираємо файл (щоб не накопичувався)
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception:
+            logger.warning("Не вдалося видалити тимчасовий CSV файл: %s", file_path)
+
+@router.message(Command("export_xlsx"))
+async def admin_export_xlsx(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+
+    logger.info("Адмін команда /export_xlsx | admin_id=%s", message.from_user.id if message.from_user else None)
+
+    # 1) Забираємо дані з Sheets
+    try:
+        rows = await asyncio.to_thread(get_all_leads_with_header)
+    except Exception as e:
+        await message.answer(f"⚠️ Не вдалося зчитати дані з Google Sheets: {e}", reply_markup=admin_kb)
+        return
+
+    if not rows or len(rows) <= 1:
+        await message.answer("Немає даних для експорту (таблиця порожня).", reply_markup=admin_kb)
+        return
+
+    # 2) Генеруємо XLSX
+    exports_dir = Path("exports")
+    exports_dir.mkdir(exist_ok=True)
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = exports_dir / f"leads_export_{ts}.xlsx"
+
+    try:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Leads"
+
+        # Запис рядків
+        for row in rows:
+            ws.append(row)
+
+        # Форматування: заморозити хедер + автофільтр
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+
+        # Автоширина колонок (простий варіант)
+        max_col = ws.max_column
+        for col_idx in range(1, max_col + 1):
+            col_letter = get_column_letter(col_idx)
+            max_len = 0
+            for cell in ws[col_letter]:
+                val = "" if cell.value is None else str(cell.value)
+                if len(val) > max_len:
+                    max_len = len(val)
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 45)
+
+        wb.save(file_path)
+    except Exception as e:
+        logger.exception("Помилка створення XLSX")
+        await message.answer(f"⚠️ Не вдалося створити XLSX: {e}", reply_markup=admin_kb)
+        return
+
+    # 3) Надсилаємо файл адміну
+    try:
+        doc = FSInputFile(str(file_path))
+        await message.answer_document(
+            document=doc,
+            caption=f"📦 Експорт заявок (XLSX): {file_path.name}",
+            reply_markup=admin_kb
+        )
+        logger.info("XLSX експорт надіслано | file=%s rows=%s", file_path.name, len(rows))
+    except Exception:
+        logger.exception("Помилка надсилання XLSX файлу")
+        await message.answer("⚠️ Не вдалося надіслати файл. Див. лог.", reply_markup=admin_kb)
+    finally:
+        # 4) Прибираємо файл
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception:
+            logger.warning("Не вдалося видалити тимчасовий XLSX файл: %s", file_path)
 
 @router.message(lambda m: (m.text or "") == "⬅️ Назад")
 async def back_to_main(message: Message, state: FSMContext):

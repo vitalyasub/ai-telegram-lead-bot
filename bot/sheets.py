@@ -140,3 +140,13 @@ def ping_sheets() -> tuple[bool, str]:
         return True, "OK"
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:200]}"
+    
+def get_all_leads_with_header() -> list[list[str]]:
+    """
+    Повертає всі рядки з таблиці, включно з хедером.
+    """
+    client = _get_client()
+    sh = client.open(GSHEET_NAME)
+    ws = sh.sheet1
+    values = ws.get_all_values()
+    return values or []
