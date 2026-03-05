@@ -12,6 +12,7 @@ from sheets import (
     get_last_leads,
     find_leads_by_phone,
     get_leads_stats,
+    ping_sheets,
 )
 
 from config import (
@@ -172,6 +173,23 @@ async def admin_stats(message: Message, state: FSMContext):
         reply_markup=admin_kb
     )
 
+@router.message(Command("health"))
+async def admin_health(message: Message, state: FSMContext):
+    if not _is_admin(message):
+        return
+
+    enabled = await asyncio.to_thread(is_leads_enabled, LEADS_ENABLED)
+    ok_sheets, sheets_msg = await asyncio.to_thread(ping_sheets)
+
+    await message.answer(
+        "🩺 Health check:\n\n"
+        f"• Bot: OK ✅\n"
+        f"• Прийом заявок: {'УВІМКНЕНО ✅' if enabled else 'ВИМКНЕНО ❌'}\n"
+        f"• Cooldown: {LEAD_COOLDOWN_MINUTES} хв\n"
+        f"• Google Sheets: {'OK ✅' if ok_sheets else 'ERROR ❌'}\n"
+        f"  {sheets_msg}\n",
+        reply_markup=admin_kb
+    )
 
 @router.message(lambda m: (m.text or "") == "⬅️ Назад")
 async def back_to_main(message: Message, state: FSMContext):

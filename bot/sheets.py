@@ -126,3 +126,17 @@ def get_leads_stats() -> dict[str, int]:
             pass
 
     return {"total": total, "today": today_count, "last_7_days": last_7_days_count}
+
+def ping_sheets() -> tuple[bool, str]:
+    """
+    Легка перевірка доступу до Google Sheets.
+    Повертає (ok, message).
+    """
+    try:
+        client = _get_client()
+        sh = client.open(GSHEET_NAME)
+        ws = sh.sheet1
+        _ = ws.row_values(1)  # читаємо перший рядок
+        return True, "OK"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {str(e)[:200]}"
