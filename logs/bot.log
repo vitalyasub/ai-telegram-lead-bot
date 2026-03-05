@@ -17,3 +17,8 @@
 2026-03-04 16:53:21 | ERROR | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
 2026-03-04 16:53:21 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8676672550)
 2026-03-04 16:53:33 | INFO | aiogram.dispatcher | Connection established (tryings = 1, bot id = 8676672550)
+2026-03-04 17:07:05 | INFO | aiogram.dispatcher | Polling stopped
+2026-03-04 17:07:05 | ERROR | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-03-04 17:07:05 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8676672550)
+2026-03-04 17:07:06 | INFO | bot | Зупинка бота
+2026-03-04 17:07:06 | INFO | aiogram.dispatcher | Polling stopped for bot @ai_telegram_lead_bot id=8676672550 - 'ai-telegram-lead-bot'
