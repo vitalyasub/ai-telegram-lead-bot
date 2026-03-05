@@ -7,6 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from logging_config import setup_logging
 from config import BOT_TOKEN
 from handlers import router
+from error_handler import router as error_router
 from sheets import ensure_header
 
 
@@ -18,6 +19,8 @@ async def main():
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
+    
+    dp.include_router(error_router)
     dp.include_router(router)
 
     # Ініціалізація таблиці (хедер) — не зупиняємо бота, якщо Google тимчасово недоступний
